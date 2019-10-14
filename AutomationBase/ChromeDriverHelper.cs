@@ -1,25 +1,113 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.Win32;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 
 namespace AutomationBase
 {
-    public static void Teste()
-    {
-        var driver = ChromeDriverHelper.GetDriverBuilder()
-                                       .AllowRunningInsecureContent()
-                                       .Build();
-        //driver.Navigate()
-    }
 
     public static class ChromeDriverHelper 
     {
         public static ChromeDriverBuilder GetDriverBuilder() => new ChromeDriverBuilder();
+
+        public static Dictionary<string, string> GetChromeDriverVersionsAvailableForDownload()
+        {
+            using (var client = new HttpClient())
+            using (var response = client.GetAsync("https://chromedriver.chromium.org/downloads").Result)
+            using (var content = response.Content)
+            {
+                var result = content.ReadAsStringAsync().Result;
+                var substring = result.Substring(result.IndexOf("If you are using", StringComparison.Ordinal),
+                    result.IndexOf("For older version of Chrome", StringComparison.Ordinal));
+                var splitted = substring.Split(new[] {"please download"}, StringSplitOptions.None);
+
+                var links = splitted.Where((t, i) => i != 0)
+                                    .Select(t => t.Between(@"a href=", " ").Replace("\"", string.Empty))
+                                    .ToList();
+
+                return links.ToDictionary(x => x.Between("path=", "."), x => x?.Replace("index.html?path=", string.Empty) + "chromedriver_win32.zip");
+            }
+        }
+
+        public static void CheckUpdateChromeDriver()
+        {
+            var browserVersion = GetChromeBrowserVersion(DevOpsHelper.GetOsPlatform());
+            var driverVersion = GetChromeDriverVersion(AppDomain.CurrentDomain.BaseDirectory);
+
+            var availableVersions = GetChromeDriverVersionsAvailableForDownload();
+            if (browserVersion == driverVersion) return;
+            if (!availableVersions.ContainsKey(browserVersion))
+            {
+                throw new Exception("Update is not available");
+            }
+
+            WebHelper.DownloadFile(availableVersions[browserVersion], Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip")).Wait();
+            CompressionHelper.ExtractZip(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip");
+        }
+
+        /// <summary>
+        /// Gets chrome driver version.
+        /// </summary>
+        /// <param name="chromeDriverPath">Null means solution base directory</param>
+        /// <param name="chromeDriverFileName"></param>
+        /// <returns></returns>
+        public static string GetChromeDriverVersion(string chromeDriverPath = null, string chromeDriverFileName = "chromedriver.exe")
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = Path.Combine(chromeDriverPath ?? AppDomain.CurrentDomain.BaseDirectory, chromeDriverFileName),
+                    Arguments = "-v",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            while (!process.StandardOutput.EndOfStream)
+            {
+                var line = process.StandardOutput.ReadLine();
+                return TreatVersionString(line);
+            }
+
+            return null;
+        }
+
+        private static string TreatVersionString(string versao)
+        {
+            return versao.Split('.').First().Replace("ChromeDriver", string.Empty).Trim();
+        }
+
+        public static string GetChromeBrowserVersion(OSPlatform osPlatform)
+        {
+            if (osPlatform == OSPlatform.Windows)
+            {
+                var path = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe", "", null) ??
+                           Registry.GetValue(@"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe", "", null);
+
+                return path != null ? TreatVersionString(FileVersionInfo.GetVersionInfo(path.ToString()).FileVersion) : null;
+            }
+            else if (osPlatform == OSPlatform.OSX)
+            {
+                return string.Empty;
+            }
+            else if (osPlatform == OSPlatform.Linux)
+            {
+                return string.Empty;
+            }
+
+            return null;
+        }
 
         public static void WaitForPageToLoad(this ChromeDriver chromeDriver, TimeSpan? timeout = null)
         {
@@ -64,15 +152,22 @@ namespace AutomationBase
             _ = ((IJavaScriptExecutor)chromedriver).ExecuteScript($"window.scroll({element.Location.X}, {element.Location.Y})");
         }
 
-        public static By MultipleClasses(string expectedElementTag = null, params string[] classes)
+        /// <summary>
+        /// Find element by multiple classes
+        /// </summary>
+        /// <param name="expectedElementTag">A div, a, p</param>
+        /// <param name="classes">Order does not matter</param>
+        /// <returns></returns>
+        public static By MultipleClasses(string expectedElementTag = "div", params string[] classes)
         {
             if (classes.Length == 0)
             {
                 return null;
             }
 
-            //string.Join()
-            return By.XPath($"//{expectedElementTag ?? "div"}[contains(@class, '{classes.First()}') and contains(.//span, 'someText')]");
+            var filter = "and contains(@class, '" + string.Join("') and contains(@class, '", classes) + "')";
+
+            return By.XPath($"//{expectedElementTag}[contains(@class, '{classes.First()}') {filter}]");
         }
     }
 
