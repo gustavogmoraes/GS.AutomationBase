@@ -43,10 +43,15 @@ namespace AutomationBase
             var driverVersion = GetChromeDriverVersion(AppDomain.CurrentDomain.BaseDirectory);
 
             var availableVersions = GetChromeDriverVersionsAvailableForDownload();
-            if (browserVersion == driverVersion) return;
-            if (!availableVersions.ContainsKey(browserVersion))
+
+            if (!string.IsNullOrEmpty(driverVersion))
             {
-                throw new Exception("Update is not available");
+                if (browserVersion == driverVersion) return;
+
+                if (!availableVersions.ContainsKey(browserVersion))
+                {
+                    throw new Exception("Update is not available");
+                }
             }
 
             WebHelper.DownloadFile(availableVersions[browserVersion], Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip")).Wait();
@@ -61,6 +66,11 @@ namespace AutomationBase
         /// <returns></returns>
         public static string GetChromeDriverVersion(string chromeDriverPath = null, string chromeDriverFileName = "chromedriver.exe")
         {
+            if (!File.Exists(Path.Combine(chromeDriverPath, chromeDriverFileName)))
+            {
+                return string.Empty;
+            }
+
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -85,17 +95,61 @@ namespace AutomationBase
 
         private static string TreatVersionString(string versao)
         {
-            return versao.Split('.').First().Replace("ChromeDriver", string.Empty).Trim();
+            return versao.Split('.')
+                         .First()
+                         .Replace("ChromeDriver", string.Empty)
+                         .Replace("Version=", string.Empty)
+                         .Trim();
+        }
+
+        public static string TryGetChromePathOnWindows()
+        {
+            var chromeAppend = @"Google\Chrome\Application\";
+
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)) &&
+                Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\")) &&
+                Directory.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\")))
+            {
+                var programPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), chromeAppend);
+
+                var program = Directory.GetFiles(programPath);
+                if (program.Contains("chrome.exe"))
+                {
+                    return programPath;
+                }
+            }
+            
+
+            var programX86Path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), chromeAppend);
+
+            var programX86 = Directory.GetFiles(programX86Path);
+            return programX86.Any(x => x.Contains("chrome.exe")) ? programX86Path : string.Empty;
         }
 
         public static string GetChromeBrowserVersion(OSPlatform osPlatform)
         {
             if (osPlatform == OSPlatform.Windows)
             {
-                var path = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe", "", null) ??
-                           Registry.GetValue(@"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe", "", null);
+                var chromePath = Path.Combine(TryGetChromePathOnWindows(), "chrome.exe");
 
-                return path != null ? TreatVersionString(FileVersionInfo.GetVersionInfo(path.ToString()).FileVersion) : null;
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows)),
+                        Arguments = $@"datafile where name=""{chromePath}"" get Version /value",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                while (!process.StandardOutput.EndOfStream)
+                {
+                    var line = process.StandardOutput.ReadLine();
+                    return TreatVersionString(line);
+                }
             }
             else if (osPlatform == OSPlatform.OSX)
             {
