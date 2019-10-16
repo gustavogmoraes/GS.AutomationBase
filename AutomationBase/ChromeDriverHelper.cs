@@ -27,7 +27,7 @@ namespace AutomationBase
                 var result = content.ReadAsStringAsync().Result;
                 var substring = result.Substring(result.IndexOf("If you are using", StringComparison.Ordinal),
                     result.IndexOf("For older version of Chrome", StringComparison.Ordinal));
-                var splitted = substring.Split(new[] {"please download"}, StringSplitOptions.None);
+                var splitted = substring.Split(new[] { "please download" }, StringSplitOptions.None);
 
                 var links = splitted.Where((t, i) => i != 0)
                                     .Select(t => t.Between(@"a href=", " ").Replace("\"", string.Empty))
@@ -54,8 +54,11 @@ namespace AutomationBase
                 }
             }
 
-            WebHelper.DownloadFile(availableVersions[browserVersion], Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip")).Wait();
+            var zipPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip");
+            WebHelper.DownloadFile(availableVersions[browserVersion], zipPath).Wait();
+
             CompressionHelper.ExtractZip(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip");
+            File.Delete(zipPath);
         }
 
         /// <summary>
@@ -95,6 +98,11 @@ namespace AutomationBase
 
         private static string TreatVersionString(string versao)
         {
+            if (string.IsNullOrEmpty(versao))
+            {
+                return null;
+            }
+
             return versao.Split('.')
                          .First()
                          .Replace("ChromeDriver", string.Empty)
@@ -118,7 +126,7 @@ namespace AutomationBase
                     return programPath;
                 }
             }
-            
+
 
             var programX86Path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), chromeAppend);
 
@@ -131,25 +139,7 @@ namespace AutomationBase
             if (osPlatform == OSPlatform.Windows)
             {
                 var chromePath = Path.Combine(TryGetChromePathOnWindows(), "chrome.exe");
-
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows)),
-                        Arguments = $@"datafile where name=""{chromePath}"" get Version /value",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    }
-                };
-
-                process.Start();
-                while (!process.StandardOutput.EndOfStream)
-                {
-                    var line = process.StandardOutput.ReadLine();
-                    return TreatVersionString(line);
-                }
+                return TreatVersionString(FileVersionInfo.GetVersionInfo(chromePath).FileVersion);
             }
             else if (osPlatform == OSPlatform.OSX)
             {
@@ -222,70 +212,6 @@ namespace AutomationBase
             var filter = "and contains(@class, '" + string.Join("') and contains(@class, '", classes) + "')";
 
             return By.XPath($"//{expectedElementTag}[contains(@class, '{classes.First()}') {filter}]");
-        }
-    }
-
-    public class ChromeDriverBuilder
-    {
-        private string ChromeDriverPath { get; set; }
-
-        private ChromeOptions _options { get; set; }
-        private ChromeOptions Options => _options ?? (_options = new ChromeOptions());
-
-        private ChromeDriverService _service { get; set; }
-        private ChromeDriverService Service =>
-            _service ?? (_service = ChromeDriverService.CreateDefaultService(ChromeDriverPath ?? AppDomain.CurrentDomain.BaseDirectory));
-
-        public ChromeDriverBuilder Headless()
-        {
-            Options.AddArguments("headless", "disable-gpu", "no-sandbox", "disable-extensions"); // Headless
-            Options.AddArguments("--proxy-server='direct://'", "--proxy-bypass-list=*"); // Speed
-
-            Service.HideCommandPromptWindow = true;
-
-            return this;
-        }
-
-        public ChromeDriverBuilder DisablePopupBlocking()
-        {
-            Options.AddUserProfilePreference("disable-popup-blocking", "true");
-
-            return this;
-        }
-
-        public ChromeDriverBuilder AllowRunningInsecureContent()
-        {
-            Options.AddArguments("allow-running-insecure-content", "ignore-certificate-errors");
-
-            return this;
-        }
-
-        public ChromeDriverBuilder SetDownloadPath(string downloadFilepath)
-        {
-            Options.AddUserProfilePreference("download.default_directory", downloadFilepath);
-            Options.AddUserProfilePreference("download.prompt_for_download", false);
-            Options.AddUserProfilePreference("intl.accept_languages", "nl");
-
-            DisablePopupBlocking();
-
-            return this;
-        }
-
-        public ChromeDriverBuilder WithOptions(ChromeOptions options)
-        {
-            _options = options;
-
-            return this;
-        }
-
-        public ChromeDriver Build()
-        {
-            if(!Options.Arguments.Contains("headless"))
-            {
-                Options.AddArgument("start-maximized");
-            }
-
-            return new ChromeDriver(Service, Options, TimeSpan.FromSeconds(180));
         }
     }
 }
