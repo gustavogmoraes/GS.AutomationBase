@@ -107,6 +107,7 @@ namespace AutomationBase
                          .First()
                          .Replace("ChromeDriver", string.Empty)
                          .Replace("Version=", string.Empty)
+                         .Replace("Google Chrome ", string.Empty)
                          .Trim();
         }
 
@@ -143,7 +144,8 @@ namespace AutomationBase
             }
             else if (osPlatform == OSPlatform.OSX)
             {
-                return string.Empty;
+                var version = ShellHelper.Bash(@"/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --version");
+                return TreatVersionString(version);
             }
             else if (osPlatform == OSPlatform.Linux)
             {
