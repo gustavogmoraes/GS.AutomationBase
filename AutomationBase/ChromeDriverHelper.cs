@@ -18,7 +18,7 @@ namespace AutomationBase
     {
         public static ChromeDriverBuilder GetDriverBuilder() => new ChromeDriverBuilder();
 
-        public static Dictionary<string, string> GetChromeDriverVersionsAvailableForDownload()
+        public static Dictionary<string, string> GetChromeDriverVersionsAvailableForDownload(OSPlatform osPlatform)
         {
             using (var client = new HttpClient())
             using (var response = client.GetAsync("https://chromedriver.chromium.org/downloads").Result)
@@ -33,16 +33,31 @@ namespace AutomationBase
                                     .Select(t => t.Between(@"a href=", " ").Replace("\"", string.Empty))
                                     .ToList();
 
-                return links.ToDictionary(x => x.Between("path=", "."), x => x?.Replace("index.html?path=", string.Empty) + "chromedriver_win32.zip");
+                return links.ToDictionary(
+                    x => x.Between("path=", "."),
+                    x => x?.Replace("index.html?path=", string.Empty) + GetChromeDriverZipFileNameByOS(osPlatform));
             }
+        }
+
+        private static string GetChromeDriverZipFileNameByOS(OSPlatform osPlatform)
+        {
+            if(osPlatform.Equals(OSPlatform.Windows))
+                return "chromedriver_win32.zip";
+
+            if (osPlatform.Equals(OSPlatform.OSX))
+                return "chromedriver_mac64.zip";
+
+            return null;
         }
 
         public static void CheckUpdateChromeDriver()
         {
-            var browserVersion = GetChromeBrowserVersion(DevOpsHelper.GetOsPlatform());
-            var driverVersion = GetChromeDriverVersion(AppDomain.CurrentDomain.BaseDirectory);
+            var osPlatform = DevOpsHelper.GetOsPlatform();
 
-            var availableVersions = GetChromeDriverVersionsAvailableForDownload();
+            var browserVersion = GetChromeBrowserVersion(osPlatform);
+            var driverVersion = GetChromeDriverVersion(AppDomain.CurrentDomain.BaseDirectory, osPlatform);
+
+            var availableVersions = GetChromeDriverVersionsAvailableForDownload(osPlatform);
 
             if (!string.IsNullOrEmpty(driverVersion))
             {
@@ -67,22 +82,40 @@ namespace AutomationBase
         /// <param name="chromeDriverPath">Null means solution base directory</param>
         /// <param name="chromeDriverFileName"></param>
         /// <returns></returns>
-        public static string GetChromeDriverVersion(string chromeDriverPath = null, string chromeDriverFileName = "chromedriver.exe")
+        public static string GetChromeDriverVersion(string chromeDriverPath, OSPlatform osPlatform, string chromeDriverFileName = "chromedriver")
         {
+            if(string.IsNullOrEmpty(chromeDriverPath))
+            {
+                chromeDriverPath = AppDomain.CurrentDomain.BaseDirectory;
+
+            }
+
+            if (osPlatform == OSPlatform.Windows && !chromeDriverFileName.Contains(".exe"))
+            {
+                chromeDriverFileName = $"{chromeDriverFileName}.exe";
+            }
+
             if (!File.Exists(Path.Combine(chromeDriverPath, chromeDriverFileName)))
             {
                 return string.Empty;
+            }
+
+            if(osPlatform == OSPlatform.OSX)
+            {
+                var command = $@"cd {chromeDriverPath} " +
+                              $"chmod 755 {chromeDriverFileName}";
+                ShellHelper.Bash(command);
             }
 
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = Path.Combine(chromeDriverPath ?? AppDomain.CurrentDomain.BaseDirectory, chromeDriverFileName),
+                    FileName = Path.Combine(chromeDriverPath, chromeDriverFileName),
                     Arguments = "-v",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
-                    CreateNoWindow = true
+                    CreateNoWindow = false,
                 }
             };
 
