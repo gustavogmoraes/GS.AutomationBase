@@ -248,5 +248,17 @@ namespace AutomationBase
 
             return By.XPath($"//{expectedElementTag}[contains(@class, '{classes.First()}') {filter}]");
         }
+
+        /// <summary>
+        /// Executes JavaScript
+        /// </summary>
+        /// <param name="javaScript"></param>
+        /// <returns></returns>
+        public static object ExecuteJavaScript(this ChromeDriver chromeDriver, string javaScript)
+        {
+            var commandReplacingEscapingCharacters = javaScript.Replace("\n", "<br />");
+
+            return ((IJavaScriptExecutor)chromeDriver).ExecuteScript(commandReplacingEscapingCharacters);
+        }
     }
 }
