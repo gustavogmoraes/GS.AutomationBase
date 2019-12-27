@@ -1,4 +1,7 @@
-﻿using System;
+﻿using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -6,10 +9,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Microsoft.Win32;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
 
 namespace AutomationBase
 {
@@ -53,9 +52,12 @@ namespace AutomationBase
         public static void CheckUpdateChromeDriver()
         {
             var osPlatform = DevOpsHelper.GetOsPlatform();
+            var zipName = GetChromeDriverZipFileNameByOS(osPlatform);
+
+            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
             var browserVersion = GetChromeBrowserVersion(osPlatform);
-            var driverVersion = GetChromeDriverVersion(AppDomain.CurrentDomain.BaseDirectory, osPlatform);
+            var driverVersion = GetChromeDriverVersion(baseDirectory, osPlatform);
 
             var availableVersions = GetChromeDriverVersionsAvailableForDownload(osPlatform);
 
@@ -69,10 +71,10 @@ namespace AutomationBase
                 }
             }
 
-            var zipPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip");
+            var zipPath = Path.Combine(baseDirectory, zipName);
             WebHelper.DownloadFile(availableVersions[browserVersion], zipPath).Wait();
 
-            CompressionHelper.ExtractZip(AppDomain.CurrentDomain.BaseDirectory, "chromedriver_win32.zip");
+            CompressionHelper.ExtractZip(baseDirectory, zipPath);
             File.Delete(zipPath);
         }
 
