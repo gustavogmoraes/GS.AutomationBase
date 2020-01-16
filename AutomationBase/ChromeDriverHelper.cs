@@ -12,7 +12,6 @@ using System.Threading;
 
 namespace AutomationBase
 {
-
     public static class ChromeDriverHelper 
     {
         public static ChromeDriverBuilder GetDriverBuilder() => new ChromeDriverBuilder();
@@ -261,6 +260,39 @@ namespace AutomationBase
             var commandReplacingEscapingCharacters = javaScript.Replace("\n", "<br />");
 
             return ((IJavaScriptExecutor)chromeDriver).ExecuteScript(commandReplacingEscapingCharacters);
+        }
+
+        public static void RemoveElement(this ChromeDriver driver, IWebElement element)
+        {
+            var xpath = driver.GetElementXPath(element);
+            driver.ExecuteJavaScript($"return ({JavaScriptSugar.DocumentGetElementByXpath(xpath)}).remove()");
+        }
+
+        public static string GetElementXPath(this IWebDriver driver, IWebElement element)
+        {
+            var javaScript = "function getElementXPath(elt){" +
+                                "var path = \"\";" +
+                                "for (; elt && elt.nodeType == 1; elt = elt.parentNode){" +
+                                "idx = getElementIdx(elt);" +
+                                "xname = elt.tagName;" +
+                                "if (idx > 1){" +
+                                "xname += \"[\" + idx + \"]\";" +
+                                "}" +
+                                "path = \"/\" + xname + path;" +
+                                "}" +
+                                "return path;" +
+                                "}" +
+                                "function getElementIdx(elt){" +
+                                "var count = 1;" +
+                                "for (var sib = elt.previousSibling; sib ; sib = sib.previousSibling){" +
+                                "if(sib.nodeType == 1 && sib.tagName == elt.tagName){" +
+                                "count++;" +
+                                "}" +
+                                "}" +
+                                "return count;" +
+                                "}" +
+                                "return getElementXPath(arguments[0]).toLowerCase();";
+            return (string)((IJavaScriptExecutor)driver).ExecuteScript(javaScript, element);
         }
     }
 }
