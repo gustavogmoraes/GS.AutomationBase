@@ -53,7 +53,6 @@ namespace AutomationBase
         {
             var osPlatform = DevOpsHelper.GetOsPlatform();
             var zipName = GetChromeDriverZipFileNameByOS(osPlatform);
-
             var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
             var browserVersion = GetChromeBrowserVersion(osPlatform);
@@ -104,9 +103,10 @@ namespace AutomationBase
 
             if(osPlatform == OSPlatform.OSX)
             {
-                var command = $@"cd {chromeDriverPath} " +
-                              $"chmod 755 {chromeDriverFileName}";
+                var command = $@"cd {chromeDriverPath} 
+                                 chmod 755 {chromeDriverFileName}";
                 ShellHelper.Bash(command);
+                //ShellHelper.Bash($"sudo chown {Environment.UserName} {AppDomain.CurrentDomain.BaseDirectory}");
             }
 
             var process = new Process
