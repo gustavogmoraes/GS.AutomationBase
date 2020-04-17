@@ -1,22 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
+using System.Runtime.InteropServices;
 using OpenQA.Selenium.Chrome;
 
-namespace AutomationBase
+namespace GSAutomationBase
 {
     public class ChromeDriverBuilder
     {
         private string ChromeDriverPath { get; set; }
 
         private ChromeOptions _options { get; set; }
-        private ChromeOptions Options => _options ?? (_options = new ChromeOptions());
+        private ChromeOptions Options => _options ??= new ChromeOptions();
 
         private ChromeDriverService _service { get; set; }
         private ChromeDriverService Service =>
-            _service ?? (_service = ChromeDriverService.CreateDefaultService(ChromeDriverPath ?? AppDomain.CurrentDomain.BaseDirectory));
+            _service ??= ChromeDriverService.CreateDefaultService(ChromeDriverPath ?? AppDomain.CurrentDomain.BaseDirectory);
 
         public ChromeDriverBuilder Headless()
         {
@@ -71,6 +70,13 @@ namespace AutomationBase
         public ChromeDriverBuilder WithOptions(ChromeOptions options)
         {
             _options = options;
+
+            return this;
+        }
+
+        public ChromeDriverBuilder OutputService(out ChromeDriverService service)
+        {
+            service = Service;
 
             return this;
         }
