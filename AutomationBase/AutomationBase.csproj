@@ -5,6 +5,9 @@
     <Authors>gustavogmoraes</Authors>
     <PackageProjectUrl>github.com/gustavogmoraes/GS.AutomationBase</PackageProjectUrl>
     <PackageVersion>1.0.0-pre</PackageVersion>
+    <Title>Automation base for projects</Title>
+    <PackageLicenseUrl></PackageLicenseUrl>
+    <RepositoryUrl>github.com/gustavogmoraes/GS.AutomationBase</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
