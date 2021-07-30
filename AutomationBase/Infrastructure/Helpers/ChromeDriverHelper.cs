@@ -32,7 +32,7 @@ namespace AutomationBase.Infrastructure.Helpers
             var splitted = substring.Split(new[] { "please download" }, StringSplitOptions.None);
 
             var links = splitted
-                .Where(x => x.Trim().StartsWith("<span"))
+                .Where(x => x.Trim().StartsWith("<span") || x.Trim().StartsWith("</span"))
                 .Select(t => t.Between(@"href=", " target=").Replace("\"", string.Empty))
                 .ToList();
 

@@ -1,5 +1,7 @@
 using System;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.Extensions;
 
 namespace AutomationBase.BetterSelenium.Objects
 {
@@ -11,6 +13,18 @@ namespace AutomationBase.BetterSelenium.Objects
 
         private readonly By _foundBy;
         
+        public string Value
+        {
+            get => _element.Text;
+            set => SetValue(value);
+
+        }
+
+        private void SetValue(string value)
+        {
+            ((ChromeDriver)_driver).ExecuteScript($"document.querySelector('{_foundBy.Criteria}').value = '{value}'");
+        }
+
         public NeverStaleWebElement(IWebDriver parentDriver, string id, IWebElement element, By foundBy) 
             : base((WebDriver)parentDriver, id)
         {
