@@ -160,18 +160,25 @@ namespace AutomationBase.Infrastructure.Helpers
             {
                 var programPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), chromeAppend);
 
-                var program = Directory.GetFiles(programPath);
-                if (program.Contains("chrome.exe"))
+                var filePaths = Directory.GetFiles(programPath);
+                var chromeExePath = filePaths.FirstOrDefault(x => x.Contains("chrome.exe"));
+
+                if (!string.IsNullOrEmpty(chromeExePath))
                 {
-                    return programPath;
+                    return chromeExePath;
                 }
             }
-
-
+            
             var programX86Path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), chromeAppend);
-
-            var programX86 = Directory.GetFiles(programX86Path);
-            return programX86.Any(x => x.Contains("chrome.exe")) ? programX86Path : string.Empty;
+            var filePathsX86 = Directory.GetFiles(programX86Path);
+            
+            var chromeExePathX86 = filePathsX86.FirstOrDefault(x => x.Contains("chrome.exe"));
+            if (!string.IsNullOrEmpty(chromeExePathX86))
+            {
+                return chromeExePathX86;
+            }
+            
+            return filePathsX86.Any(x => x.Contains("chrome.exe")) ? programX86Path : string.Empty;
         }
 
         public static string GetChromeBrowserVersion(OSPlatform osPlatform)

@@ -7,7 +7,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <Authors>gustavogmoraes</Authors>
     <PackageProjectUrl>github.com/gustavogmoraes/GS.AutomationBase</PackageProjectUrl>
-    <PackageVersion>1.0.8-pre</PackageVersion>
+    <PackageVersion>1.0.23-pre</PackageVersion>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <Title>Automation base for projects</Title>
     <RepositoryUrl>github.com/gustavogmoraes/GS.AutomationBase</RepositoryUrl>
